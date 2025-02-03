@@ -1,0 +1,65 @@
+name: Deploy to ECR
+# updated ECR Repo week3-1 01/22
+on: 
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  
+  build:
+    
+    name: Build Image
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: us-east-1
+
+    - name: Create ECR repositories
+      run: |
+        aws ecr describe-repositories --repository-names clo835-assignment1/mysql || \
+        aws ecr create-repository --repository-name clo835-assignment1/mysql
+
+        aws ecr describe-repositories --repository-names clo835-assignment1/webapp || \
+        aws ecr create-repository --repository-name clo835-assignment1/webapp
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+      env:
+        AWS_REGION: us-east-1
+
+    - name: MYSQL Build, test, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: clo835-assignment1/mysql
+        IMAGE_TAG: v0.1
+      run: |
+        cd dockerfiles/mysql/
+        ls -ltra
+        # Docker build command
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        sleep 10
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      
+    - name: WEBAPP Build, test, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: clo835-assignment1/webapp
+        IMAGE_TAG: v0.1
+      run: |
+        cd dockerfiles/webapp/
+        ls -ltra
+        # Docker build command
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        sleep 10
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
