@@ -1,0 +1,3 @@
+.terraform/
+week1-dev
+*.hcl
